@@ -1,4 +1,4 @@
-
+#include "WPILib.h"
 #include <Joystick.h>
 #include <LiveWindow/LiveWindow.h>
 #include <RobotDrive.h>
@@ -20,7 +20,48 @@
 #define MIN_AN_TRIGGER_VOLTAGE (double)0.76f
 #define MAX_AN_TRIGGER_VOLTAGE MXP_IO_VOLTAGE - (double)2.0f
 
+    static const int MAX_NAVX_MXP_DIGIO_PIN_NUMBER      = 9;
+    static const int MAX_NAVX_MXP_ANALOGIN_PIN_NUMBER   = 3;
+    static const int MAX_NAVX_MXP_ANALOGOUT_PIN_NUMBER  = 1;
+    static const int NUM_ROBORIO_ONBOARD_DIGIO_PINS     = 10;
+    static const int NUM_ROBORIO_ONBOARD_PWM_PINS       = 10;
+    static const int NUM_ROBORIO_ONBOARD_ANALOGIN_PINS  = 4;
 
+enum PinType { DigitalIO, PWMs, AnalogIn, AnalogOut };
+int GetChannelFromPin( PinType type, int io_pin_number ) {
+    int roborio_channel = 0;
+    if ( io_pin_number < 0 ) {
+        throw std::runtime_error("Error:  navX MXP I/O Pin #");
+    }
+    switch ( type ) {
+    case DigitalIO:
+        if ( io_pin_number > MAX_NAVX_MXP_DIGIO_PIN_NUMBER ) {
+            throw std::runtime_error("Error:  Invalid navX MXP Digital I/O Pin #");
+        }
+        roborio_channel = io_pin_number + NUM_ROBORIO_ONBOARD_DIGIO_PINS +
+                          (io_pin_number > 3 ? 4 : 0);
+        break;
+    case PWMs:
+        if ( io_pin_number > MAX_NAVX_MXP_DIGIO_PIN_NUMBER ) {
+            throw std::runtime_error("Error:  Invalid navX MXP Digital I/O Pin #");
+        }
+        roborio_channel = io_pin_number + NUM_ROBORIO_ONBOARD_PWM_PINS;
+        break;
+    case AnalogIn:
+        if ( io_pin_number > MAX_NAVX_MXP_ANALOGIN_PIN_NUMBER ) {
+            throw new std::runtime_error("Error:  Invalid navX MXP Analog Input Pin #");
+        }
+        roborio_channel = io_pin_number + NUM_ROBORIO_ONBOARD_ANALOGIN_PINS;
+        break;
+    case AnalogOut:
+        if ( io_pin_number > MAX_NAVX_MXP_ANALOGOUT_PIN_NUMBER ) {
+            throw new std::runtime_error("Error:  Invalid navX MXP Analog Output Pin #");
+        }
+        roborio_channel = io_pin_number;
+        break;
+    }
+    return roborio_channel;
+}
 //When deploying Code: Turn off Wifi
 
 //If there is an Error With Microsoft Visual Studios: Go to Project->Properties->
@@ -38,7 +79,9 @@ public:
 		myRobot.SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
 		timer.Start();  //Initializes the timer
 		autocounter = 0;
-		enum PinType { DigitalIO, PWM, AnalogIn, AnalogOut };
+
+		pwm_out_0 = new Victor(        GetChannelFromPin( PinType::PWMs,       0 ));
+
 
 		//This try catch block checks to see if an error instantiating the navx is thrown
 		try {
@@ -62,6 +105,8 @@ public:
 		        if ( ahrs ) {
 		            LiveWindow::GetInstance()->AddSensor("IMU", "Gyro", ahrs);
 		        }
+
+
 	}
 
 private:
@@ -145,7 +190,7 @@ private:
 	frc::TalonSRX outakeMotor { 6 }; //Motor for the cloth lifting thing
 	frc::TalonSRX climberMotor { 7 }; //Motor for climbing
 
-	Victor *pwm_out_0 { 0 };
+	Victor *pwm_out_0 ;
 
 
 
@@ -464,12 +509,12 @@ private:
 
 
 		//If button 5 is pressed, the outake motor will spin forwards at half power until pot is greater than 40
-		if((stick.GetRawButton(5) == true)&&(outakePot.GetRaw()<POT_MAX_VALUE))
+		if(stick.GetRawButton(5) == true)
 		{
 			outakeMotor.SetSpeed(0.5);
 		}
 		//If button 6 is pressed, the outake motor will spin backwards at half power until pot is less than 10
-		else if((stick.GetRawButton(6) == true)&&(outakePot.GetRaw()>POT_MIN_VALUE))
+		else if(stick.GetRawButton(6) == true)
 		{
 			outakeMotor.SetSpeed(-0.5);
 		}
