@@ -19,6 +19,7 @@
 #define MXP_IO_VOLTAGE (double)3.3f /* Alternately, 5.0f   */
 #define MIN_AN_TRIGGER_VOLTAGE (double)0.76f
 #define MAX_AN_TRIGGER_VOLTAGE MXP_IO_VOLTAGE - (double)2.0f
+#define AUTO_ON 100
 
 
 //When deploying Code: Turn off Wifi
@@ -192,7 +193,7 @@ private:
 	void AutonomousPeriodic() override
 			{
 			//If the autocounter is less than 100, move forward and add 1 to the autocounter
-			while(autocounter<100)
+			while(autocounter<AUTO_ONE)
 			{
 				myRobot.MecanumDrive_Cartesian(0, 1,0, 0);
 				autocounter++;
