@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <unistd.h>
 
+
 #define POT_MAX_VALUE 40
 #define POT_MIN_VALUE 10
 #define ANGLE 45
@@ -19,6 +20,12 @@
 #define MXP_IO_VOLTAGE (double)3.3f /* Alternately, 5.0f   */
 #define MIN_AN_TRIGGER_VOLTAGE (double)0.76f
 #define MAX_AN_TRIGGER_VOLTAGE MXP_IO_VOLTAGE - (double)2.0f
+#define AUTO_ONE 100
+#define AUTO_TWO 100
+#define AUTO_THREE 100
+#define AUTO_FOUR 100
+#define AUTO_FIVE 100
+
 
     static const int MAX_NAVX_MXP_DIGIO_PIN_NUMBER      = 9;
     static const int MAX_NAVX_MXP_ANALOGIN_PIN_NUMBER   = 3;
@@ -189,6 +196,7 @@ private:
 	frc::TalonSRX groundIntakeMotor { 5}; //Motor for the ground intake
 	frc::TalonSRX outakeMotor { 6 }; //Motor for the cloth lifting thing
 	frc::TalonSRX climberMotor { 7 }; //Motor for climbing
+//	frc::Ultrasonic ultrasonicTest { 9 };  //Test code for the ultrasonic
 
 	Victor *pwm_out_0 ;
 
@@ -234,77 +242,77 @@ private:
 //		}
 	}
 	int autocounter;
-	void AutonomousPeriodic() override
-			{
-			//If the autocounter is less than 100, move forward and add 1 to the autocounter
-			while(autocounter<100)
-			{
-				myRobot.MecanumDrive_Cartesian(0, 1,0, 0);
-				autocounter++;
-				if(autocounter == 100)
+		void AutonomousPeriodic() override
 				{
-					myRobot.MecanumDrive_Cartesian(0,0,0,0);
+				//If the autocounter is less than 100, move forward and add 1 to the autocounter
+				while(autocounter<AUTO_ONE)
+				{
+					myRobot.MecanumDrive_Cartesian(0, 1,0, 0);
+					autocounter++;
+					if(autocounter == AUTO_ONE)
+					{
+						myRobot.MecanumDrive_Cartesian(0,0,0,0);
+					}
 				}
-			}
-			//If the autocounter is equal to 100, stop the driving
+				//If the autocounter is equal to 100, stop the driving
 
-			//turn a set degree
-			while((ahrs->GetAngle()<ANGLE+WIGGLEROOM)||(ahrs->GetAngle()>ANGLE-WIGGLEROOM))
-			{
-				if(ahrs->GetAngle()<ANGLE+WIGGLEROOM)
+				//turn a set degree
+				while((ahrs->GetAngle()<ANGLE+WIGGLEROOM)||(ahrs->GetAngle()>ANGLE-WIGGLEROOM))
 				{
-					myRobot.MecanumDrive_Cartesian(0, 0,1, 0);
+					if(ahrs->GetAngle()<ANGLE+WIGGLEROOM)
+					{
+						myRobot.MecanumDrive_Cartesian(0, 0,1, 0);
+					}
+					else
+					{
+						myRobot.MecanumDrive_Cartesian(0, 0,-1, 0);
+					}
 				}
-				else
+				//go field centric forward a set time (UNTIL_PEG_TIME)
+				autocounter = 0;
+				while(autocounter<AUTO_TWO)
 				{
-					myRobot.MecanumDrive_Cartesian(0, 0,-1, 0);
+					myRobot.MecanumDrive_Cartesian(0, 1,0,ahrs->GetAngle());
+			        autocounter++;
+			        if(autocounter == AUTO_TWO)
+			        {
+			        	myRobot.MecanumDrive_Cartesian(0,0,0,0);
+			        }
 				}
-			}
-			//go field centric forward a set time (UNTIL_PEG_TIME)
-			autocounter = 0;
-			while(autocounter<100)
-			{
-				myRobot.MecanumDrive_Cartesian(0, 1,0,ahrs->GetAngle());
-		        autocounter++;
-		        if(autocounter == 100)
-		        {
-		        	myRobot.MecanumDrive_Cartesian(0,0,0,0);
-		        }
-			}
 
-		//robot centric forward for te set time (UNTIL_GEAR_AT_PEG_TIME)
-			while(autocounter<100)
-			{
-				myRobot.MecanumDrive_Cartesian(0, 1,0,0);
-				autocounter++;
-				if(autocounter == 100)
+			//robot centric forward for te set time (UNTIL_GEAR_AT_PEG_TIME)
+				while(autocounter<AUTO_THREE)
 				{
-					myRobot.MecanumDrive_Cartesian(0,0,0,0);
+					myRobot.MecanumDrive_Cartesian(0, 1,0,0);
+					autocounter++;
+					if(autocounter == AUTO_THREE)
+					{
+						myRobot.MecanumDrive_Cartesian(0,0,0,0);
+					}
 				}
-			}
-			//wait until us sensor says gear is out
+				//wait until us sensor says gear is out
 
-			// go robot centric back a set time (UNTIL_OUT_OF_THE_WAY_TIME)
-			while(autocounter<100)
-			{
-				myRobot.MecanumDrive_Cartesian(0, -1,0,0);
-				autocounter++;
-				if(autocounter == 100)
+				// go robot centric back a set time (UNTIL_OUT_OF_THE_WAY_TIME)
+				while(autocounter<AUTO_FOUR)
 				{
-					myRobot.MecanumDrive_Cartesian(0,0,0,0);
+					myRobot.MecanumDrive_Cartesian(0, -1,0,0);
+					autocounter++;
+					if(autocounter == AUTO_FOUR)
+					{
+						myRobot.MecanumDrive_Cartesian(0,0,0,0);
+					}
 				}
-			}
-		//go field centric forward a set time (BASE_LINE_TIME)
-			 while(autocounter<100)
-			 {
-			 	myRobot.MecanumDrive_Cartesian(0, -1,0,ahrs->GetAngle());
-			 	autocounter++;
-			 	if(autocounter == 100)
-			 	{
-			 		myRobot.MecanumDrive_Cartesian(0,0,0,0);
-			 	}
-			 }
-			};
+			//go field centric forward a set time (BASE_LINE_TIME)
+				 while(autocounter<AUTO_FIVE)
+				 {
+				 	myRobot.MecanumDrive_Cartesian(0, -1,0,ahrs->GetAngle());
+				 	autocounter++;
+				 	if(autocounter == AUTO_FIVE)
+				 	{
+				 		myRobot.MecanumDrive_Cartesian(0,0,0,0);
+				 	}
+				 }
+				};
 
 	void TeleopInit() override {
 
@@ -524,10 +532,11 @@ private:
 			outakeMotor.SetSpeed(0);
 		}
 
+
 		//if button 11 is pressed climber motor goes forward depending on how far the joystick is moved, only going forward proportionally to the absolute value of the joystick's y axis
 		if(stick.GetRawButton(11))
 		{
-			climberMotor.SetSpeed(fabs(stick.GetY()));
+			climberMotor.SetSpeed(-fabs(stick.GetY()));
 		}
 		//if button is not pressed climber motor stops
 		else
@@ -535,10 +544,13 @@ private:
 			climberMotor.SetSpeed(0);
 		}
 
+
 		//frc::SmartDashboard::PutNumber("height of gear",gearUlt.GetRangeInches());
 
 		//Getting Button 5 output
 		//frc::SmartDashboard::PutBoolean("Button 5",stick.GetRawButton(5));
+
+//		frc::SmartDashboard::PutNumber("Distance in millimeters", ultrasonicTest.GetRangeMM());
 
 
 	}
