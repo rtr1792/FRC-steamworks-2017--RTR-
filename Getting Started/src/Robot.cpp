@@ -81,7 +81,7 @@ class Robot: public frc::IterativeRobot {
 
 public:
 
-	Robot() : lf(1), lr(5), rf(4), rr(2){
+	Robot() : lf(1), lr(2), rf(4), rr(5){
 
 		//Generic initialization code
 		m_robotDrive.SetExpiration(0.1);
@@ -133,6 +133,12 @@ private:
 	float gearUSTimeStart = 0;
 	bool gearTimeReset = 0;
 	float gearTimeDelay = 0;
+
+	frc::AnalogInput ultrasonicTest { 0 };
+	const int Vcc = 5;
+	const double Vm = null;
+
+	double Vi = Vcc/512;
 
 	CANTalon lf; /*left front */
 	CANTalon lr;/*left rear */
@@ -277,11 +283,31 @@ private:
 
 	void TeleopPeriodic() override {
 
+		//Latch For Gyro
+				if(xbox.GetRawButton(5)&&xbox.GetRawButton(6)&&!driveLatch)
+				{
+						driveToggle=!driveToggle;
+						driveLatch = true;
+				}
+				else if(!xbox.GetRawButton(5)&&!xbox.GetRawButton(6)&&driveLatch)
+				{
+					driveLatch = false;
+				}
+				//Robot Centric
+				if(driveToggle)
+				{
+					driveGyro = 0;
+				}
+				//Field Centric
+				else if(!driveToggle)
+				{
+					driveGyro = ahrs->GetAngle();
+				}
 
 
 		//Drives the robot using the joystick, the gyro, and Mecanum
 		//if the value of the stick is less than 10%, set to 0
-		float deadZoneThreshold = 0.05;
+		float deadZoneThreshold = 0.3;
 
 		if (fabs(stick.GetRawAxis(0)) < deadZoneThreshold)
 		{
@@ -303,41 +329,22 @@ private:
 			joystickDeadBandY = stick.GetRawAxis(1);
 		}
 		//Repeat of above for Z
-		if (fabs(stick.GetRawAxis(2)) < deadZoneThreshold)
+		if(stick.GetRawButton(3))
+		{
+		if (fabs(stick.GetRawAxis(2)) < .5)
 		{
 			joystickDeadBandZ = 0;
 		}
 
 		else
 		{
-			joystickDeadBandZ = stick.GetRawAxis(2);
+			joystickDeadBandZ = -stick.GetRawAxis(2);
 		}
-
-
-
-		//Latch For Gyro
-		if(xbox.GetRawButton(5)&&xbox.GetRawButton(6)&&!driveLatch)
+		}
+		else
 		{
-				driveToggle=!driveToggle;
-				driveLatch = true;
+			joystickDeadBandZ = 0;
 		}
-		else if(!xbox.GetRawButton(5)&&!xbox.GetRawButton(6)&&driveLatch)
-		{
-			driveLatch = false;
-		}
-		//Robot Centric
-		if(driveToggle)
-		{
-			driveGyro = 0;
-		}
-		//Field Centric
-		else if(!driveToggle)
-		{
-			driveGyro = ahrs->GetAngle();
-		}
-
-
-
 		//Set values to each motor
 		//frontLeftMotor.SetSpeed(frontLeft);
 		//frontRightMotor.SetSpeed(-frontRight);
@@ -345,16 +352,17 @@ private:
 		//rearRightMotor.SetSpeed(-rearRight);
 
 
+
 		bool reset_yaw_button_pressed = stick.GetRawButton(1);
 		if (reset_yaw_button_pressed) {
 			ahrs->ZeroYaw();
 		}
 		try {
-			/* Use the joystick X axis for lateral movement,
-			 Y axis for forward movement, and Z axis for rotation.
-			 Use navX MXP yaw angle to define Field-centric transform */
+			// Use the joystick X axis for lateral movement,
+			 //Y axis for forward movement, and Z axis for rotation.
+			 //Use navX MXP yaw angle to define Field-centric transform
 			m_robotDrive.MecanumDrive_Cartesian(joystickDeadBandX,joystickDeadBandY,
-					joystickDeadBandZ,0);
+					joystickDeadBandZ,driveGyro);
 		} catch (std::exception& ex) {
 			std::string err_string = "Error communicating with Drive System:  ";
 			err_string += ex.what();
@@ -428,7 +436,7 @@ private:
 
 
 		//If button 5 is pressed, the outake motor will spin forwards at half power until pot is greater than 40
-		if(xbox.GetRawButton(3) == true)
+		if(xbox.GetRawButton(9) == true)
 		{
 			outakeMotor.SetSpeed(0.5);
 		}
@@ -480,6 +488,9 @@ private:
 			gearServoLatch = false;
 		}
 
+
+
+
 		frc::SmartDashboard::PutNumber("Left Servo Angle",gearServoLeft.GetAngle());
 		frc::SmartDashboard::PutNumber("Right Servo Angle",gearServoRight.GetAngle());
 		frc::SmartDashboard::PutNumber("lf encoder", lf.GetEncPosition());
@@ -499,7 +510,8 @@ private:
 		//Getting Button 5 output
 		//frc::SmartDashboard::PutBoolean("Button 5",stick.GetRawButton(5));
 
-//		frc::SmartDashboard::PutNumber("Distance in millimeters", ultrasonicTest.GetRangeMM());
+
+		frc::SmartDashboard::PutNumber("Distance in millimeters", ultrasonicTest.GetValue());
 
 
 	}
