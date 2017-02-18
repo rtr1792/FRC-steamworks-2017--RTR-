@@ -81,7 +81,7 @@ class Robot: public frc::IterativeRobot {
 
 public:
 
-	Robot() : lf(1), lr(2), rf(4), rr(5){
+	Robot() : rr(1), rf(2), lr(4), lf(5){
 
 		//Generic initialization code
 		m_robotDrive.SetExpiration(0.1);
@@ -122,6 +122,10 @@ private:
 	frc::Joystick stick { 0 };         // Only joystick
 	frc::XboxController xbox { 1 };
 
+	double gyroHeading = 0;
+	bool gyroLatch= false;
+	float kgyroManip = 1;
+
 	AHRS *ahrs;
 	// 0  2
 	// 1  3
@@ -134,24 +138,24 @@ private:
 	bool gearTimeReset = 0;
 	float gearTimeDelay = 0;
 
-	frc::AnalogInput ultrasonicTest { 0 };
+	/*frc::AnalogInput ultrasonicTest { 0 };
 	const int Vcc = 5;
-	const double Vm = null;
+	const double Vm = null; */
 
-	double Vi = Vcc/512;
+	//double Vi = Vcc/512;
 
-	CANTalon lf; /*left front */
-	CANTalon lr;/*left rear */
-	CANTalon rf; /*right front */
-	CANTalon rr; /*right rear */
+	CANTalon rr; /*left front */
+	CANTalon rf;/*left rear */
+	CANTalon lr; /*right front */
+	CANTalon lf; /*right rear */
 
-	frc::RobotDrive m_robotDrive {lf, lr, rf, rr};
-	frc::TalonSRX groundIntakeMotor { 1 }; //Motor for the ground intake
-	frc::TalonSRX outakeMotor { 2 }; //Motor for the cloth lifting thing
-	frc::TalonSRX climberMotor { 3 }; //Motor for climbing
-	frc::Servo gearServoLeft { 4 };
-	frc::Servo gearServoRight { 5 };
-\
+	frc::RobotDrive m_robotDrive {rr, rf, lr, lf};
+	frc::TalonSRX groundIntakeMotor { 2 }; //Motor for the ground intake
+	frc::TalonSRX outakeMotor { 3 }; //Motor for the cloth lifting thing
+	frc::TalonSRX climberMotor { 4 }; //Motor for climbing
+	frc::Servo gearServoLeft { 0 };
+	frc::Servo gearServoRight { 1 };
+
 
 
 	//Values for determining a deadband for control
@@ -173,7 +177,7 @@ private:
 	//GO Latch Variables
 	bool gearToggle = false;
     bool gearLatch = false;
-    bool gearServoLatch = false;
+    //bool gearServoLatch = false;
 
 	//Temporary Value(s)
 	float tempA = 0;
@@ -329,22 +333,35 @@ private:
 			joystickDeadBandY = stick.GetRawAxis(1);
 		}
 		//Repeat of above for Z
-		if(stick.GetRawButton(3))
+		if(!stick.GetRawButton(12))   //only turns when button 12 is pressed
 		{
-		if (fabs(stick.GetRawAxis(2)) < .5)
+			gyroLatch = true;
+			if (fabs(stick.GetRawAxis(2)) < .25)
+			{
+				joystickDeadBandZ = 0;
+			}
+			else
+			{
+				joystickDeadBandZ = -stick.GetRawAxis(2);
+			}
+		}
+		else
 		{
-			joystickDeadBandZ = 0;
+
+			if(gyroLatch)
+			{
+				gyroHeading=ahrs->GetAngle();
+				gyroLatch = false;
+			}
+
+
+
+			joystickDeadBandZ = ((ahrs->GetAngle()-gyroHeading)/180)*kgyroManip;
+
 		}
 
-		else
-		{
-			joystickDeadBandZ = -stick.GetRawAxis(2);
-		}
-		}
-		else
-		{
-			joystickDeadBandZ = 0;
-		}
+
+
 		//Set values to each motor
 		//frontLeftMotor.SetSpeed(frontLeft);
 		//frontRightMotor.SetSpeed(-frontRight);
@@ -399,7 +416,7 @@ private:
 		//If button 3 is pressed, the ground intake motor will spin forwards at half power
 		if(xbox.GetRawButton(1) == true)
 		{
-			groundIntakeMotor.SetSpeed(0.5);
+			groundIntakeMotor.SetSpeed(0.95);
 		}
 		//If button 4 is pressed, the ground intake motor will spin backwards at half power
 		else if(xbox.GetRawButton(2) == true)
@@ -436,14 +453,14 @@ private:
 
 
 		//If button 5 is pressed, the outake motor will spin forwards at half power until pot is greater than 40
-		if(xbox.GetRawButton(9) == true)
+		if(xbox.GetRawButton(3) == true)
 		{
-			outakeMotor.SetSpeed(0.5);
+			outakeMotor.SetSpeed(0.25);
 		}
 		//If button 6 is pressed, the outake motor will spin backwards at half power until pot is less than 10
 		else if(xbox.GetRawButton(4) == true)
 		{
-			outakeMotor.SetSpeed(-0.5);
+			outakeMotor.SetSpeed(-0.25);
 		}
 		//Otherwise, the outake motor will stop
 		else
@@ -453,16 +470,38 @@ private:
 
 
 		//if button 11 is pressed climber motor goes forward depending on how far the joystick is moved, only going forward proportionally to the absolute value of the joystick's y axis
-		if(stick.GetRawButton(10))
+		if(stick.GetRawButton(9))
 		{
-			climberMotor.SetSpeed(-fabs(stick.GetRawAxis(3)));
+			//climberMotor.SetSpeed(-fabs(stick.GetRawAxis(3)));
+			climberMotor.SetSpeed(-1);
 		}
+
 		//if button is not pressed climber motor stops
 		else
 		{
 			climberMotor.SetSpeed(0);
 		}
 
+		if(stick.GetRawButton(5))
+		{
+			gearServoLeft.SetAngle(90);
+		}
+		else if(stick.GetRawButton(3))
+		{
+			gearServoLeft.SetAngle(180);
+		}
+
+		if(stick.GetRawButton(6))
+		{
+			gearServoRight.SetAngle(90);
+		}
+		else if(stick.GetRawButton(4))
+		{
+			gearServoRight.SetAngle(180);
+		}
+
+
+		/*
 		if(stick.GetRawButton(4)&&!gearServoLatch)
 		{
 			gearServoLeft.SetAngle(gearServoLeft.GetAngle()-1);
@@ -487,31 +526,34 @@ private:
 		{
 			gearServoLatch = false;
 		}
-
+		*/
 
 
 
 		frc::SmartDashboard::PutNumber("Left Servo Angle",gearServoLeft.GetAngle());
 		frc::SmartDashboard::PutNumber("Right Servo Angle",gearServoRight.GetAngle());
-		frc::SmartDashboard::PutNumber("lf encoder", lf.GetEncPosition());
-		frc::SmartDashboard::PutNumber("lr encoder", lr.GetEncPosition());
-		frc::SmartDashboard::PutNumber("rf encoder", rf.GetEncPosition());
 		frc::SmartDashboard::PutNumber("rr encoder", rr.GetEncPosition());
+		frc::SmartDashboard::PutNumber("rf pin a", rf.GetPinStateQuadA());
+		frc::SmartDashboard::PutNumber("rf pin b", rf.GetPinStateQuadB());
+		frc::SmartDashboard::PutNumber("lr encoder", lr.GetEncPosition());
+		frc::SmartDashboard::PutNumber("lf encoder", lf.GetEncPosition());
+		frc::SmartDashboard::PutNumber("rf encoder velocity", lf.GetEncVel());
+		frc::SmartDashboard::PutNumber("rf encoder speed", lf.GetSpeed());
 		frc::SmartDashboard::PutBoolean("Drive Toggle", driveToggle);
 		frc::SmartDashboard::PutNumber("X Axis", stick.GetRawAxis(0));
-		frc::SmartDashboard::PutNumber("YAxis", stick.GetRawAxis(1));
-		frc::SmartDashboard::PutNumber("ZAxis",stick.GetRawAxis(2));
-		frc::SmartDashboard::PutNumber("Left Front",lf.Get());
+		frc::SmartDashboard::PutNumber("Y Axis", stick.GetRawAxis(1));
+		frc::SmartDashboard::PutNumber("Z Axis",stick.GetRawAxis(2));
+		frc::SmartDashboard::PutNumber("Right Rear",rr.Get());
 		frc::SmartDashboard::PutNumber("Right Front",rf.Get());
-		frc::SmartDashboard::PutNumber("Left Back",lr.Get());
-		frc::SmartDashboard::PutNumber("Right Back",rr.Get());
+		frc::SmartDashboard::PutNumber("Left Rear",lr.Get());
+		frc::SmartDashboard::PutNumber("Left Front",lf.Get());
 		//frc::SmartDashboard::PutNumber("height of gear",gearUlt.GetRangeInches());
 
 		//Getting Button 5 output
 		//frc::SmartDashboard::PutBoolean("Button 5",stick.GetRawButton(5));
 
 
-		frc::SmartDashboard::PutNumber("Distance in millimeters", ultrasonicTest.GetValue());
+		//frc::SmartDashboard::PutNumber("Distance in millimeters", ultrasonicTest.GetValue());
 
 
 	}
