@@ -405,18 +405,20 @@ private:
 		//Open Flaps
 		if(gearToggle)
 		{
-			//open the flaps
+			gearServoLeft.SetAngle(90);
+			gearServoRight.SetAngle(90);
 		}
 		//Close Flaps
 		else if(!gearToggle)
 		{
-			//close the flaps
+			gearServoLeft.SetAngle(0);
+			gearServoRight.SetAngle(180);
 		}
 
 		//If button 3 is pressed, the ground intake motor will spin forwards at half power
 		if(xbox.GetRawButton(1) == true)
 		{
-			groundIntakeMotor.SetSpeed(0.95);
+			groundIntakeMotor.SetSpeed(0.5);
 		}
 		//If button 4 is pressed, the ground intake motor will spin backwards at half power
 		else if(xbox.GetRawButton(2) == true)
@@ -448,19 +450,19 @@ private:
         	gearTimeReset = false;
         }
 
-        frc::SmartDashboard::PutNumber("Time Delay",gearTimeDelay);
+
 
 
 
 		//If button 5 is pressed, the outake motor will spin forwards at half power until pot is greater than 40
 		if(xbox.GetRawButton(3) == true)
 		{
-			outakeMotor.SetSpeed(0.25);
+			outakeMotor.SetSpeed((outakeMotor.GetSpeed()+.01)*2);
 		}
 		//If button 6 is pressed, the outake motor will spin backwards at half power until pot is less than 10
 		else if(xbox.GetRawButton(4) == true)
 		{
-			outakeMotor.SetSpeed(-0.25);
+			outakeMotor.SetSpeed((outakeMotor.GetSpeed()-.01)*2);
 		}
 		//Otherwise, the outake motor will stop
 		else
@@ -480,24 +482,6 @@ private:
 		else
 		{
 			climberMotor.SetSpeed(0);
-		}
-
-		if(stick.GetRawButton(5))
-		{
-			gearServoLeft.SetAngle(90);
-		}
-		else if(stick.GetRawButton(3))
-		{
-			gearServoLeft.SetAngle(180);
-		}
-
-		if(stick.GetRawButton(6))
-		{
-			gearServoRight.SetAngle(90);
-		}
-		else if(stick.GetRawButton(4))
-		{
-			gearServoRight.SetAngle(180);
 		}
 
 
