@@ -12,6 +12,8 @@
 #include <iomanip>
 #include <unistd.h>
 #include "CANTalon.h"
+#include "TPixy.h"
+#include "PixyI2C.h"
 
 #define POT_MAX_VALUE 40
 #define POT_MIN_VALUE 10
@@ -144,6 +146,13 @@ private:
 
 	//double Vi = Vcc/512;
 
+	TPixy<LinkI2C> Pixy;
+	float Pixyx = 0;
+	float Pixyy = 0;
+	float Pixyh = 0;
+	float Pixyw = 0;
+	float PixyBlockNumb = 0;
+
 	CANTalon rr; /*left front */
 	CANTalon rf;/*left rear */
 	CANTalon lr; /*right front */
@@ -186,6 +195,9 @@ private:
 
 	frc::Timer timer;
 	frc::LiveWindow* lw = frc::LiveWindow::GetInstance();
+
+	//Pixy Variables
+
 
 
 	void AutonomousInit() override {
@@ -286,6 +298,23 @@ private:
 	};
 
 	void TeleopPeriodic() override {
+
+		//Pixy Code
+				Pixy.GetBlocks();
+				Pixyx = Pixy.blocks->x;
+				Pixyy = Pixy.blocks->y;
+				Pixyh = Pixy.blocks->height;
+				Pixyw = Pixy.blocks->width;
+				PixyBlockNumb = Pixy.blocks->signature;
+				frc::SmartDashboard::PutNumber("Pixy X", Pixyx);
+				frc::SmartDashboard::PutNumber("Pixy Y", Pixyy);
+				frc::SmartDashboard::PutNumber("Pixy H", Pixyh);
+				frc::SmartDashboard::PutNumber("Pixy W", Pixyw);
+				frc::SmartDashboard::PutNumber("Pixy Block Numb", PixyBlockNumb);
+
+
+
+
 
 		//Latch For Gyro
 				if(xbox.GetRawButton(5)&&xbox.GetRawButton(6)&&!driveLatch)
