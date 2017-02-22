@@ -27,7 +27,7 @@
 
 #include "TPixy.h"
 
-#define PIXY_I2C_DEFAULT_ADDR  0x54
+#define PIXY_I2C_DEFAULT_ADDR  0x64
 #define PIXY_I2C_DEFAULT_PORT  I2C::Port::kOnboard
 
 class LinkI2C

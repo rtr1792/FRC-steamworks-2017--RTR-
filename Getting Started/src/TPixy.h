@@ -20,8 +20,6 @@
 #ifndef _TPIXY_H
 #define _TPIXY_H
 
-#include "WPILib.h"
-#include <WPILib.h>
 #include "I2C.h"
 #include "SensorBase.h"
 
@@ -101,7 +99,7 @@ public:
   
   Block *blocks;
   
-private:
+public:
   bool GetStart();
   void Resize();
 

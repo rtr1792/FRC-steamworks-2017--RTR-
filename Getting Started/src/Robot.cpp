@@ -28,6 +28,8 @@
 #define AUTO_FOUR 100
 #define AUTO_FIVE 100
 
+#define I2C_SLAVE_ADR 0x64
+
 
     static const int MAX_NAVX_MXP_DIGIO_PIN_NUMBER      = 9;
     static const int MAX_NAVX_MXP_ANALOGIN_PIN_NUMBER   = 3;
@@ -35,6 +37,8 @@
     static const int NUM_ROBORIO_ONBOARD_DIGIO_PINS     = 10;
     static const int NUM_ROBORIO_ONBOARD_PWM_PINS       = 10;
     static const int NUM_ROBORIO_ONBOARD_ANALOGIN_PINS  = 4;
+
+    typedef unsigned char byte;
 
 enum PinType { DigitalIO, PWMs, AnalogIn, AnalogOut };
 int GetChannelFromPin( PinType type, int io_pin_number ) {
@@ -83,8 +87,10 @@ class Robot: public frc::IterativeRobot {
 
 public:
 
-	Robot() : rr(1), rf(2), lr(4), lf(5){
+	Robot() : rr(1), rf(2), lr(4), lf(5), outakeEncoder(3){
 
+
+		i2cthing = new I2C(I2C::kOnboard, I2C_SLAVE_ADR);
 		//Generic initialization code
 		m_robotDrive.SetExpiration(0.1);
 		//Inverts the left side
@@ -121,6 +127,11 @@ public:
 	}
 
 private:
+
+
+
+
+
 	frc::Joystick stick { 0 };         // Only joystick
 	frc::XboxController xbox { 1 };
 
@@ -147,16 +158,26 @@ private:
 	//double Vi = Vcc/512;
 
 	TPixy<LinkI2C> Pixy;
-	float Pixyx = 0;
-	float Pixyy = 0;
-	float Pixyh = 0;
-	float Pixyw = 0;
-	float PixyBlockNumb = 0;
+	float Pixyx1 = 0;
+	float Pixyy1 = 0;
+	float Pixyh1 = 0;
+	float Pixyw1 = 0;
+	float PixyBlockNumb1 = 0;
+	float PixySig1 = 0;
+	float Pixyx2 = 0;
+	float Pixyy2 = 0;
+	float Pixyh2 = 0;
+	float Pixyw2 = 0;
+	float PixyBlockNumb2 = 0;
+	float PixySig2 = 0;
+
+	I2C *i2cthing;
 
 	CANTalon rr; /*left front */
 	CANTalon rf;/*left rear */
 	CANTalon lr; /*right front */
 	CANTalon lf; /*right rear */
+	CANTalon outakeEncoder; /*outake Encoder */
 
 	frc::RobotDrive m_robotDrive {rr, rf, lr, lf};
 	frc::TalonSRX groundIntakeMotor { 2 }; //Motor for the ground intake
@@ -196,9 +217,13 @@ private:
 	frc::Timer timer;
 	frc::LiveWindow* lw = frc::LiveWindow::GetInstance();
 
-	//Pixy Variables
+	std::unique_ptr<frc::Command> autocommand;
+	frc::SendableChooser<frc::Command*> chooser;
 
+	void RobotInit() override {
 
+		//chooser.AddDefault("Do Nothing", new Pickup());
+	}
 
 	void AutonomousInit() override {
 		timer.Reset();
@@ -221,77 +246,70 @@ private:
 //		}
 	}
 	int autocounter;
-		void AutonomousPeriodic() override
-				{
-				//If the autocounter is less than 100, move forward and add 1 to the autocounter
-				while(autocounter<AUTO_ONE)
-				{
-					m_robotDrive.MecanumDrive_Cartesian(0, 1,0, 0);
-					autocounter++;
-					if(autocounter == AUTO_ONE)
-					{
-						m_robotDrive.MecanumDrive_Cartesian(0,0,0,0);
-					}
-				}
-				//If the autocounter is equal to 100, stop the driving
+	void AutonomousPeriodic() override
+		{
+			if(timer.Get()<3)
+			{
+				m_robotDrive.MecanumDrive_Cartesian(0,.25,0,0);
+			}
+		};
 
-				//turn a set degree
-				while((ahrs->GetAngle()<ANGLE+WIGGLEROOM)||(ahrs->GetAngle()>ANGLE-WIGGLEROOM))
-				{
-					if(ahrs->GetAngle()<ANGLE+WIGGLEROOM)
-					{
-						m_robotDrive.MecanumDrive_Cartesian(0, 0,1, 0);
-					}
-					else
-					{
-						m_robotDrive.MecanumDrive_Cartesian(0, 0,-1, 0);
-					}
-				}
-				//go field centric forward a set time (UNTIL_PEG_TIME)
-				autocounter = 0;
-				while(autocounter<AUTO_TWO)
-				{
-					m_robotDrive.MecanumDrive_Cartesian(0, 1,0,ahrs->GetAngle());
-			        autocounter++;
-			        if(autocounter == AUTO_TWO)
-			        {
-			        	m_robotDrive.MecanumDrive_Cartesian(0,0,0,0);
-			        }
-				}
+	void PixyFunct()
+	{
+		byte buff[31];
+		int translate[15];
+		i2cthing->Read(0x64, 31, buff);
 
-			//robot centric forward for te set time (UNTIL_GEAR_AT_PEG_TIME)
-				while(autocounter<AUTO_THREE)
-				{
-					m_robotDrive.MecanumDrive_Cartesian(0, 1,0,0);
-					autocounter++;
-					if(autocounter == AUTO_THREE)
-					{
-						m_robotDrive.MecanumDrive_Cartesian(0,0,0,0);
-					}
-				}
-				//wait until us sensor says gear is out
 
-				// go robot centric back a set time (UNTIL_OUT_OF_THE_WAY_TIME)
-				while(autocounter<AUTO_FOUR)
+		if(!(buff[1]==buff[2]))
+		{
+			if(buff[0]==0)
+			{
+				for(int i = 0;i<30;i++)
 				{
-					m_robotDrive.MecanumDrive_Cartesian(0, -1,0,0);
-					autocounter++;
-					if(autocounter == AUTO_FOUR)
-					{
-						m_robotDrive.MecanumDrive_Cartesian(0,0,0,0);
-					}
+					buff[i]=buff[i+1];
 				}
-			//go field centric forward a set time (BASE_LINE_TIME)
-				 while(autocounter<AUTO_FIVE)
-				 {
-				 	m_robotDrive.MecanumDrive_Cartesian(0, -1,0,ahrs->GetAngle());
-				 	autocounter++;
-				 	if(autocounter == AUTO_FIVE)
-				 	{
-				 		m_robotDrive.MecanumDrive_Cartesian(0,0,0,0);
-				 	}
-				 }
-				};
+			}
+		}
+		for(int i = 0;i<15;i++)
+		{
+			translate[i]=buff[(2*i)+1]*256 + buff[2*i];
+		}
+
+		SmartDashboard::PutNumber("Buff0",buff[0]);
+		SmartDashboard::PutNumber("Buff1",buff[1]);
+		SmartDashboard::PutNumber("Buff2",buff[2]);
+		SmartDashboard::PutNumber("Buff3",buff[3]);
+		SmartDashboard::PutNumber("Buff4",buff[4]);
+		SmartDashboard::PutNumber("Buff5",buff[5]);
+		SmartDashboard::PutNumber("Buff6",buff[6]);
+		SmartDashboard::PutNumber("Buff7",buff[7]);
+		SmartDashboard::PutNumber("Buff8",buff[8]);
+		SmartDashboard::PutNumber("Buff9",buff[9]);
+		SmartDashboard::PutNumber("Buff10",buff[10]);
+		SmartDashboard::PutNumber("Buff11",buff[11]);
+		SmartDashboard::PutNumber("Buff12",buff[12]);
+		SmartDashboard::PutNumber("Buff13",buff[13]);
+
+
+		SmartDashboard::PutNumber("Translate0",translate[0]);
+		SmartDashboard::PutNumber("Translate1",translate[1]);
+		SmartDashboard::PutNumber("Translate2",translate[2]);
+		SmartDashboard::PutNumber("Translate3",translate[3]);
+		SmartDashboard::PutNumber("Translate4",translate[4]);
+		SmartDashboard::PutNumber("Translate5",translate[5]);
+		SmartDashboard::PutNumber("Translate6",translate[6]);
+		SmartDashboard::PutNumber("Translate7",translate[7]);
+		SmartDashboard::PutNumber("Translate8",translate[8]);
+		SmartDashboard::PutNumber("Translate9",translate[9]);
+		SmartDashboard::PutNumber("Translate10",translate[10]);
+		SmartDashboard::PutNumber("Translate11",translate[11]);
+		SmartDashboard::PutNumber("Translate12",translate[12]);
+		SmartDashboard::PutNumber("Translate13",translate[13]);
+		SmartDashboard::PutNumber("Translate14",translate[14]);
+
+
+	};
 
 	void TeleopInit() override {
 
@@ -300,21 +318,44 @@ private:
 	void TeleopPeriodic() override {
 
 		//Pixy Code
-				Pixy.GetBlocks();
-				Pixyx = Pixy.blocks->x;
-				Pixyy = Pixy.blocks->y;
-				Pixyh = Pixy.blocks->height;
-				Pixyw = Pixy.blocks->width;
-				PixyBlockNumb = Pixy.blocks->signature;
-				frc::SmartDashboard::PutNumber("Pixy X", Pixyx);
-				frc::SmartDashboard::PutNumber("Pixy Y", Pixyy);
-				frc::SmartDashboard::PutNumber("Pixy H", Pixyh);
-				frc::SmartDashboard::PutNumber("Pixy W", Pixyw);
-				frc::SmartDashboard::PutNumber("Pixy Block Numb", PixyBlockNumb);
+		PixyFunct();
+
+		//Pixy.GetStart();
+
+		Pixy.GetStart();
+		PixyBlockNumb1 = Pixy.GetBlocks(2);
+		Pixyx1 = Pixy.blocks->x;
+		Pixyy1 = Pixy.blocks->y;
+		Pixyh1 = Pixy.blocks->height;
+		Pixyw1 = Pixy.blocks->width;
+		//PixyBlockNumb2 = Pixy.link.getByte();
+		PixySig1 = Pixy.blocks->signature;
+		Pixyx2 = Pixy.blocks->x;
+		Pixyy2 = Pixy.blocks->y;
+		Pixyh2 = Pixy.blocks->height;
+		Pixyw2 = Pixy.blocks->width;
+		PixySig2 = Pixy.blocks->signature;
+
+		frc::SmartDashboard::PutNumber("X 1", Pixyx1);
+		frc::SmartDashboard::PutNumber("Y 1", Pixyy1);
+		frc::SmartDashboard::PutNumber("H 1", Pixyh1);
+		frc::SmartDashboard::PutNumber("W 1", Pixyw1);
+		frc::SmartDashboard::PutNumber("Sig 1", PixySig1);
+		frc::SmartDashboard::PutNumber("Block Numb 1", PixyBlockNumb1);
+		frc::SmartDashboard::PutNumber("X 2", Pixyx2);
+		frc::SmartDashboard::PutNumber("Y 2", Pixyy2);
+		frc::SmartDashboard::PutNumber("H 2", Pixyh2);
+		frc::SmartDashboard::PutNumber("W 2", Pixyw2);
+		frc::SmartDashboard::PutNumber("Sig 2", PixySig2);
+		frc::SmartDashboard::PutNumber("Block Numb 2", PixyBlockNumb2);
+		frc::SmartDashboard::PutNumber("Make Sure Updating", 33);
 
 
 
-
+				if(stick.GetRawButton(7))
+				{
+					ahrs->Reset();
+				}
 
 		//Latch For Gyro
 				if(xbox.GetRawButton(5)&&xbox.GetRawButton(6)&&!driveLatch)
@@ -342,7 +383,7 @@ private:
 		//if the value of the stick is less than 10%, set to 0
 		float deadZoneThreshold = 0.3;
 
-		if (fabs(stick.GetRawAxis(0)) < deadZoneThreshold)
+		if ((fabs(stick.GetRawAxis(0)) < deadZoneThreshold)||stick.GetRawButton(12))
 		{
 			joystickDeadBandX = 0;
 		}
@@ -353,7 +394,7 @@ private:
 		}
 
 		//Repeat of above for Y
-		if (fabs(stick.GetRawAxis(1)) < deadZoneThreshold)
+		if ((fabs(stick.GetRawAxis(1)) < deadZoneThreshold)||stick.GetRawButton(11))
 		{
 			joystickDeadBandY = 0;
 		}
@@ -362,7 +403,7 @@ private:
 			joystickDeadBandY = stick.GetRawAxis(1);
 		}
 		//Repeat of above for Z
-		if(!stick.GetRawButton(12))   //only turns when button 12 is pressed
+		if(!stick.GetRawButton(12)&&!stick.GetRawButton(11))   //only turns when button 12 is pressed
 		{
 			gyroLatch = true;
 			if (fabs(stick.GetRawAxis(2)) < .25)
@@ -390,6 +431,17 @@ private:
 		}
 
 
+		if(stick.GetRawButton(1))
+		{
+			joystickDeadBandX=joystickDeadBandX/2;
+			joystickDeadBandY=joystickDeadBandY/2;
+			if(!stick.GetRawButton(12))
+			{
+				joystickDeadBandZ=joystickDeadBandZ/2;
+			}
+		}
+
+
 
 		//Set values to each motor
 		//frontLeftMotor.SetSpeed(frontLeft);
@@ -399,7 +451,7 @@ private:
 
 
 
-		bool reset_yaw_button_pressed = stick.GetRawButton(1);
+		bool reset_yaw_button_pressed = stick.GetRawButton(6);
 		if (reset_yaw_button_pressed) {
 			ahrs->ZeroYaw();
 		}
@@ -408,7 +460,7 @@ private:
 			 //Y axis for forward movement, and Z axis for rotation.
 			 //Use navX MXP yaw angle to define Field-centric transform
 			m_robotDrive.MecanumDrive_Cartesian(joystickDeadBandX,joystickDeadBandY,
-					joystickDeadBandZ,driveGyro);
+					joystickDeadBandZ,driveGyro+180);
 		} catch (std::exception& ex) {
 			std::string err_string = "Error communicating with Drive System:  ";
 			err_string += ex.what();
@@ -484,19 +536,27 @@ private:
 
 
 		//If button 5 is pressed, the outake motor will spin forwards at half power until pot is greater than 40
+       /*int OutULimit = 4;
+		int OutLLimit = 0;
+        if(((xbox.GetRawButton(3) == false)&&(xbox.GetRawButton(4) == false))||outakeEncoder.GetEncPosition>OutULimit||outakeEncoder.GetEncPosition<OutLLimit)
+        {
+        	outakeEncoder.SetSpeed(0);
+        }
+        */
 		if(xbox.GetRawButton(3) == true)
 		{
-			outakeMotor.SetSpeed((outakeMotor.GetSpeed()+.01)*2);
+			//outakeEncoder.Set((outakeEncoder.GetSpeed()+.01)*2);
+			outakeEncoder.Set(.25);
 		}
 		//If button 6 is pressed, the outake motor will spin backwards at half power until pot is less than 10
 		else if(xbox.GetRawButton(4) == true)
 		{
-			outakeMotor.SetSpeed((outakeMotor.GetSpeed()-.01)*2);
+			outakeEncoder.Set(-.25);
 		}
 		//Otherwise, the outake motor will stop
 		else
 		{
-			outakeMotor.SetSpeed(0);
+			outakeEncoder.Set(0);
 		}
 
 
@@ -506,7 +566,10 @@ private:
 			//climberMotor.SetSpeed(-fabs(stick.GetRawAxis(3)));
 			climberMotor.SetSpeed(-1);
 		}
-
+		else if(stick.GetRawButton(10))
+		{
+			climberMotor.SetSpeed(-.5);
+		}
 		//if button is not pressed climber motor stops
 		else
 		{
