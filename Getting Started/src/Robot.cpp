@@ -12,8 +12,6 @@
 #include <iomanip>
 #include <unistd.h>
 #include "CANTalon.h"
-#include "TPixy.h"
-#include "PixyI2C.h"
 
 #define POT_MAX_VALUE 40
 #define POT_MIN_VALUE 10
@@ -157,19 +155,17 @@ private:
 
 	//double Vi = Vcc/512;
 
-	TPixy<LinkI2C> Pixy;
+	//TPixy<LinkI2C> Pixy;
 	float Pixyx1 = 0;
 	float Pixyy1 = 0;
 	float Pixyh1 = 0;
 	float Pixyw1 = 0;
-	float PixyBlockNumb1 = 0;
-	float PixySig1 = 0;
 	float Pixyx2 = 0;
 	float Pixyy2 = 0;
 	float Pixyh2 = 0;
 	float Pixyw2 = 0;
-	float PixyBlockNumb2 = 0;
-	float PixySig2 = 0;
+	int Framecount = 0;
+	int framelimit[15];
 
 	I2C *i2cthing;
 
@@ -258,6 +254,7 @@ private:
 	{
 		byte buff[31];
 		int translate[15];
+
 		i2cthing->Read(0x64, 31, buff);
 
 
@@ -275,6 +272,24 @@ private:
 		{
 			translate[i]=buff[(2*i)+1]*256 + buff[2*i];
 		}
+		if(Framecount == 15){
+				for(int i = 0;i<15;i++)
+				{
+					framelimit[i]=translate[i];
+				}
+				Framecount=0;
+		}
+		Framecount++;
+
+		Pixyx1 = framelimit[5];
+		Pixyy1 = framelimit[6];
+		Pixyw1 = framelimit[7];
+		Pixyh1 = framelimit[8];
+
+		Pixyx2 = framelimit[11];
+		Pixyy2 = framelimit[12];
+		Pixyw2 = framelimit[13];
+		Pixyh2 = framelimit[14];
 
 		SmartDashboard::PutNumber("Buff0",buff[0]);
 		SmartDashboard::PutNumber("Buff1",buff[1]);
@@ -308,6 +323,37 @@ private:
 		SmartDashboard::PutNumber("Translate13",translate[13]);
 		SmartDashboard::PutNumber("Translate14",translate[14]);
 
+		SmartDashboard::PutNumber("Frame Count:", Framecount);
+		SmartDashboard::PutNumber("FrameLimit 0", framelimit[0]);
+		SmartDashboard::PutNumber("FrameLimit 1", framelimit[1]);
+		SmartDashboard::PutNumber("FrameLimit 2", framelimit[2]);
+		SmartDashboard::PutNumber("FrameLimit 3", framelimit[3]);
+		SmartDashboard::PutNumber("FrameLimit 4", framelimit[4]);
+		SmartDashboard::PutNumber("FrameLimit 5", framelimit[5]);
+		SmartDashboard::PutNumber("FrameLimit 6", framelimit[6]);
+		SmartDashboard::PutNumber("FrameLimit 7", framelimit[7]);
+		SmartDashboard::PutNumber("FrameLimit 8", framelimit[8]);
+		SmartDashboard::PutNumber("FrameLimit 9", framelimit[9]);
+		SmartDashboard::PutNumber("FrameLimit 10", framelimit[10]);
+		SmartDashboard::PutNumber("FrameLimit 11", framelimit[11]);
+		SmartDashboard::PutNumber("FrameLimit 12", framelimit[12]);
+		SmartDashboard::PutNumber("FrameLimit 13", framelimit[13]);
+		SmartDashboard::PutNumber("FrameLimit 14", framelimit[14]);
+
+		SmartDashboard::PutNumber("Pixyx1", Pixyx1);
+		SmartDashboard::PutNumber("Pixyy1", Pixyy1);
+		SmartDashboard::PutNumber("Pixyw1", Pixyw1);
+		SmartDashboard::PutNumber("Pixyh1", Pixyh1);
+		SmartDashboard::PutNumber("Pixyx2", Pixyx2);
+		SmartDashboard::PutNumber("Pixyy2", Pixyy2);
+		SmartDashboard::PutNumber("Pixyw2", Pixyw2);
+		SmartDashboard::PutNumber("Pixyh2", Pixyh2);
+
+
+
+
+
+
 
 	};
 
@@ -318,37 +364,8 @@ private:
 	void TeleopPeriodic() override {
 
 		//Pixy Code
-		PixyFunct();
-
-		//Pixy.GetStart();
-
-		Pixy.GetStart();
-		PixyBlockNumb1 = Pixy.GetBlocks(2);
-		Pixyx1 = Pixy.blocks->x;
-		Pixyy1 = Pixy.blocks->y;
-		Pixyh1 = Pixy.blocks->height;
-		Pixyw1 = Pixy.blocks->width;
-		//PixyBlockNumb2 = Pixy.link.getByte();
-		PixySig1 = Pixy.blocks->signature;
-		Pixyx2 = Pixy.blocks->x;
-		Pixyy2 = Pixy.blocks->y;
-		Pixyh2 = Pixy.blocks->height;
-		Pixyw2 = Pixy.blocks->width;
-		PixySig2 = Pixy.blocks->signature;
-
-		frc::SmartDashboard::PutNumber("X 1", Pixyx1);
-		frc::SmartDashboard::PutNumber("Y 1", Pixyy1);
-		frc::SmartDashboard::PutNumber("H 1", Pixyh1);
-		frc::SmartDashboard::PutNumber("W 1", Pixyw1);
-		frc::SmartDashboard::PutNumber("Sig 1", PixySig1);
-		frc::SmartDashboard::PutNumber("Block Numb 1", PixyBlockNumb1);
-		frc::SmartDashboard::PutNumber("X 2", Pixyx2);
-		frc::SmartDashboard::PutNumber("Y 2", Pixyy2);
-		frc::SmartDashboard::PutNumber("H 2", Pixyh2);
-		frc::SmartDashboard::PutNumber("W 2", Pixyw2);
-		frc::SmartDashboard::PutNumber("Sig 2", PixySig2);
-		frc::SmartDashboard::PutNumber("Block Numb 2", PixyBlockNumb2);
-		frc::SmartDashboard::PutNumber("Make Sure Updating", 33);
+			PixyFunct();
+			frc::SmartDashboard::PutNumber("Make Sure Updating", 99888996);
 
 
 
