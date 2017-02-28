@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <unistd.h>
 #include "CANTalon.h"
+#include <Math.h>
 
 #define POT_MAX_VALUE 40
 #define POT_MIN_VALUE 10
@@ -27,6 +28,7 @@
 #define AUTO_FIVE 100
 
 #define I2C_SLAVE_ADR 0x64
+
 
 
     static const int MAX_NAVX_MXP_DIGIO_PIN_NUMBER      = 9;
@@ -166,6 +168,51 @@ private:
 	float Pixyw2 = 0;
 	int Framecount = 0;
 	int framelimit[15];
+	float FocalLength = 0.110236;
+	int screenwidth = 640;
+	int screenheight = 400;
+
+	//Allowed Range
+	int XRange = 5;
+	int YRange = 5;
+	int HRange = 5;
+	int WRange = 5;
+
+	//Testing Values
+	//Almost Done
+		//Right in front of all need to do is drive straight
+		float Pixyx1Almost = 157;
+		float Pixyy1Almost = 60;
+		float Pixyh1Almost = 34;
+		float Pixyw1Almost = 18;
+		float Pixyx2Almost = 101;
+		float Pixyy2Almost = 62;
+		float Pixyh2Almost = 34;
+		float Pixyw2Almost = 15;
+
+		//Almost Done Midpoint
+		float XAlmostmid = 0;
+		float YAlmostmid = 0;
+
+
+
+	//Drive Control
+	float CameraTurnTo = 0;
+	float CameraDriveFrdRev = 0;
+	float CameraStrafe = 0;
+
+	//Peg Mid Point
+	float Xmid = 0;
+	float Ymid = 0;
+
+	//Allow Next Steps
+	bool PixyNoTargets = true;
+	bool AllowStrafe = false;
+	bool AllowNormalDrive = false;
+	bool Target1Good = false;
+	bool Target2Good = false;
+	bool GearPlaced = false;
+
 
 	I2C *i2cthing;
 
@@ -208,6 +255,22 @@ private:
 	//Temporary Value(s)
 	float tempA = 0;
 
+	float gearPegAngle = 60;
+	int gearAngL = gearPegAngle;
+	int gearAngC = 0;
+	int gearAngR = -gearPegAngle;
+	int targeting_step = 0;
+	float Obj1[4] = {0,0,0,0};
+	float Obj2[4] = {0,0,0,0};
+	float LeftObj[4] = {0,0,0,0};
+	int xMax = 12;
+	int xMin = 0;
+	int gearDirection = 0;
+	float holding_angle = 0;
+	int xLock = 6;
+	float kgearLining = 0.25;
+	int targetWidth = 6;
+	int checkStep = 0;
 
 
 	frc::Timer timer;
@@ -272,6 +335,7 @@ private:
 		{
 			translate[i]=buff[(2*i)+1]*256 + buff[2*i];
 		}
+		/*
 		if(Framecount == 15){
 				for(int i = 0;i<15;i++)
 				{
@@ -280,65 +344,25 @@ private:
 				Framecount=0;
 		}
 		Framecount++;
+		*/
+		if(translate[0] == 43605 && translate[1] == 43605 && translate[8] == 43605){
+			Pixyx1 = translate[4];
+			Pixyy1 = translate[5];
+			Pixyw1 = translate[6];
+			Pixyh1 = translate[7];
 
-		Pixyx1 = framelimit[5];
-		Pixyy1 = framelimit[6];
-		Pixyw1 = framelimit[7];
-		Pixyh1 = framelimit[8];
-
-		Pixyx2 = framelimit[11];
-		Pixyy2 = framelimit[12];
-		Pixyw2 = framelimit[13];
-		Pixyh2 = framelimit[14];
-
-		SmartDashboard::PutNumber("Buff0",buff[0]);
-		SmartDashboard::PutNumber("Buff1",buff[1]);
-		SmartDashboard::PutNumber("Buff2",buff[2]);
-		SmartDashboard::PutNumber("Buff3",buff[3]);
-		SmartDashboard::PutNumber("Buff4",buff[4]);
-		SmartDashboard::PutNumber("Buff5",buff[5]);
-		SmartDashboard::PutNumber("Buff6",buff[6]);
-		SmartDashboard::PutNumber("Buff7",buff[7]);
-		SmartDashboard::PutNumber("Buff8",buff[8]);
-		SmartDashboard::PutNumber("Buff9",buff[9]);
-		SmartDashboard::PutNumber("Buff10",buff[10]);
-		SmartDashboard::PutNumber("Buff11",buff[11]);
-		SmartDashboard::PutNumber("Buff12",buff[12]);
-		SmartDashboard::PutNumber("Buff13",buff[13]);
-
-
-		SmartDashboard::PutNumber("Translate0",translate[0]);
-		SmartDashboard::PutNumber("Translate1",translate[1]);
-		SmartDashboard::PutNumber("Translate2",translate[2]);
-		SmartDashboard::PutNumber("Translate3",translate[3]);
-		SmartDashboard::PutNumber("Translate4",translate[4]);
-		SmartDashboard::PutNumber("Translate5",translate[5]);
-		SmartDashboard::PutNumber("Translate6",translate[6]);
-		SmartDashboard::PutNumber("Translate7",translate[7]);
-		SmartDashboard::PutNumber("Translate8",translate[8]);
-		SmartDashboard::PutNumber("Translate9",translate[9]);
-		SmartDashboard::PutNumber("Translate10",translate[10]);
-		SmartDashboard::PutNumber("Translate11",translate[11]);
-		SmartDashboard::PutNumber("Translate12",translate[12]);
-		SmartDashboard::PutNumber("Translate13",translate[13]);
-		SmartDashboard::PutNumber("Translate14",translate[14]);
-
-		SmartDashboard::PutNumber("Frame Count:", Framecount);
-		SmartDashboard::PutNumber("FrameLimit 0", framelimit[0]);
-		SmartDashboard::PutNumber("FrameLimit 1", framelimit[1]);
-		SmartDashboard::PutNumber("FrameLimit 2", framelimit[2]);
-		SmartDashboard::PutNumber("FrameLimit 3", framelimit[3]);
-		SmartDashboard::PutNumber("FrameLimit 4", framelimit[4]);
-		SmartDashboard::PutNumber("FrameLimit 5", framelimit[5]);
-		SmartDashboard::PutNumber("FrameLimit 6", framelimit[6]);
-		SmartDashboard::PutNumber("FrameLimit 7", framelimit[7]);
-		SmartDashboard::PutNumber("FrameLimit 8", framelimit[8]);
-		SmartDashboard::PutNumber("FrameLimit 9", framelimit[9]);
-		SmartDashboard::PutNumber("FrameLimit 10", framelimit[10]);
-		SmartDashboard::PutNumber("FrameLimit 11", framelimit[11]);
-		SmartDashboard::PutNumber("FrameLimit 12", framelimit[12]);
-		SmartDashboard::PutNumber("FrameLimit 13", framelimit[13]);
-		SmartDashboard::PutNumber("FrameLimit 14", framelimit[14]);
+			Pixyx2 = translate[11];
+			Pixyy2 = translate[12];
+			Pixyw2 = translate[13];
+			Pixyh2 = translate[14];
+			PixyNoTargets = false;
+			SmartDashboard::PutBoolean("PixyNoTargets", PixyNoTargets);
+		}
+		else if(translate[0] == 0 && translate[1] == 0 && translate[8] == 0){
+			//Target Non Existant
+			PixyNoTargets = true;
+			SmartDashboard::PutBoolean("PixyNoTargets", PixyNoTargets);
+		}
 
 		SmartDashboard::PutNumber("Pixyx1", Pixyx1);
 		SmartDashboard::PutNumber("Pixyy1", Pixyy1);
@@ -348,14 +372,264 @@ private:
 		SmartDashboard::PutNumber("Pixyy2", Pixyy2);
 		SmartDashboard::PutNumber("Pixyw2", Pixyw2);
 		SmartDashboard::PutNumber("Pixyh2", Pixyh2);
-
-
-
-
-
-
+		frc::SmartDashboard::PutNumber("Make Sure Updating", 666);
 
 	};
+	void PixyDriveTakeover(){
+		if(!PixyNoTargets){
+			//Find Midpoint Because Easier to Program
+			Xmid = ((Pixyx1 + Pixyx2)/2);
+			Ymid = ((Pixyy1 + Pixyy2)/2);
+			//Find Midpoint of Almost Done
+			XAlmostmid = ((Pixyx1Almost+Pixyx2Almost)/2);
+			YAlmostmid = ((Pixyy1Almost+Pixyy2Almost)/2);
+
+			//Find if Need to Turn
+			//Use Peg Cutting off Target to Advantage <Not Using Probably
+			//May Freakout with out 2 targets <Does
+			//Possibility to Fix Drift <Yes
+			//Also probably the hardest to code <Absolutly
+			if(Pixyh1 <= (Pixyh2+5) && (Pixyh2-5) <= Pixyh1){
+				//Good Nothing to Do
+				AllowStrafe = true;
+				AllowNormalDrive = true;
+			}
+			else if(Pixyh1 > Pixyh2 || Pixyh2 > Pixyh1){
+				CameraTurnTo = ((tan((Pixyx1-(screenwidth/2)+(Pixyx2-(screenwidth/2)))/(2*FocalLength))*180)/(3.14159));
+				SmartDashboard::PutNumber("CameraTurnTo", CameraTurnTo);
+				//Turn To That Angle
+					AllowStrafe = false;
+					AllowNormalDrive = false;
+				//Make Sure Still Can See Both Targets
+				if(CameraTurnTo > 0){
+					//Turns Left
+					//If Target Lost Strafe Right
+				}
+				else if(CameraTurnTo < 0){
+					//Turns Right
+					//If Target Lost Strafe Left
+				}
+				else{
+					//Is Zero ERROR!
+				}
+			}
+
+			//Finds Strafing Percentage to Lineup on Target
+			//Assumes Right is +
+			//Assumes Left is -
+			//if(AllowStrafe){
+				if(Xmid > XAlmostmid){
+					//Assumed to need to Move Left
+					CameraStrafe = (1 - (Xmid/XAlmostmid));
+					SmartDashboard::PutNumber("CameraStafe", CameraStrafe);
+				}
+				else if(Xmid < XAlmostmid){
+					//Assumed to need to Move Right
+					CameraStrafe = (1 - ((Xmid * -1)/XAlmostmid));
+					SmartDashboard::PutNumber("CameraStafe", CameraStrafe);
+				}
+				//Else Would be = and thats good
+			//}
+
+
+			//Finds Drive Forward / Backward Percentage to Lineup on Target
+			//Could use Height or Width, I chose width in order to prevent Peg cutting it off and screwing results
+			//if(AllowNormalDrive){
+				if(Pixyw1 < Pixyw1Almost && Pixyw2 < Pixyw2Almost){
+					//Assumes Turning Already took Place
+					CameraDriveFrdRev = ((1 - (Pixyw1/Pixyw1Almost)) + (1 - (Pixyw2/Pixyw2Almost))/2);
+					SmartDashboard::PutNumber("CameraDriveFrdRev", CameraDriveFrdRev);
+
+
+				}
+				else if(Pixyw1 > Pixyw1Almost && Pixyw2 > Pixyw2Almost){
+					//Too Close Should Never Happen
+					//Proably Shows that the Camera is not Reading Something correctly
+				}
+			//}
+		}
+		else{
+			//No Targets
+
+		}
+
+	};
+
+	void gearPegAngleTarget(int currentPeg, int xspeed, int yspeed)
+	{
+		holding_angle = currentPeg;
+		m_robotDrive.MecanumDrive_Cartesian(xspeed,yspeed,(((ahrs->GetAngle()-currentPeg)/180)*kgyroManip),0);
+	};
+
+	int findTheLeft(int Obj1x, int Obj2x)
+	{
+		LeftObj[0] = 0;
+		LeftObj[1] = 0;
+		LeftObj[2] = 0;
+		LeftObj[3] = 0;
+		if(Obj2x==0)
+		{
+			LeftObj[0]=Obj1[0];
+			LeftObj[1]=Obj1[1];
+			LeftObj[2]=Obj1[2];
+			LeftObj[3]=Obj1[3];
+			return Obj1x;
+		}
+		else if(Obj1x<Obj2x)
+		{
+			LeftObj[0]=Obj1[0];
+			LeftObj[1]=Obj1[1];
+			LeftObj[2]=Obj1[2];
+			LeftObj[3]=Obj1[3];
+			return Obj1x;
+		}
+		else if(Obj2x<Obj1x)
+		{
+			LeftObj[0]=Obj2[0];
+			LeftObj[1]=Obj2[1];
+			LeftObj[2]=Obj2[2];
+			LeftObj[3]=Obj2[3];
+			return Obj2x;
+		}
+		else
+		{
+			targeting_step = 9;
+			return 0;
+		}
+	};
+
+	void PutGearOnPeg()
+	{
+		switch(targeting_step)
+		{
+			case 0:
+					checkStep = 1;
+					if((ahrs->GetAngle()>gearAngL-29)&&(ahrs->GetAngle()<gearAngL+29))
+					{
+						//Run Target Code for AngleL
+						gearPegAngleTarget(gearAngL,0,0);
+					}
+
+					else if((ahrs->GetAngle()>gearAngC-29)&&(ahrs->GetAngle()<gearAngC+29))
+					{
+						//Run Target Code for AngleC
+						gearPegAngleTarget(gearAngC,0,0);
+					}
+
+					else if((ahrs->GetAngle()>gearAngR-29)&&(ahrs->GetAngle()<gearAngR+29))
+					{
+						//Run Target Code for AngleR
+						gearPegAngleTarget(gearAngR,0,0);
+					}
+					if((fabs(ahrs->GetAngle()-holding_angle))<5)
+					{
+						targeting_step = 7;
+					}
+					break;
+			case 1:
+					if(Obj2[0]==0)
+					{
+						if(Obj1[0]<=(xMax/2))
+						{
+							gearDirection = 1;
+						}
+						else if(Obj1[0]>(xMax/2))
+						{
+							gearDirection = 2;
+						}
+						targeting_step = 3;
+					}
+					else
+					{
+						targeting_step = 2;
+					}
+					break;
+			case 2:
+					if(Obj2[0]<Obj1[0])
+					{
+						gearDirection = 1;
+						targeting_step = 3;
+					}
+					else if(Obj2[0]>Obj1[0])
+					{
+						gearDirection = 2;
+						targeting_step = 3;
+					}
+					else
+					{
+						targeting_step = 9;
+					}
+					break;
+			case 3:
+					if(!((Obj1[1]>(Obj1[0]*1.5))&&(Obj2[1]>(Obj2[0]*1.5))))
+					{
+						switch(gearDirection)
+						{
+							case 1:
+									gearPegAngleTarget(holding_angle,-.5,0);
+									break;
+							case 2:
+									gearPegAngleTarget(holding_angle,.5,0);
+									break;
+						}
+					}
+					else
+					{
+						targeting_step = 4;
+					}
+					break;
+			case 4:
+					gearPegAngleTarget(holding_angle,(xLock-findTheLeft(Obj1[0],Obj2[0]))*kgearLining,0);
+					if((xLock-findTheLeft(Obj1[0],Obj2[0]))<5)
+					{
+						targeting_step = 5;
+					}
+					break;
+			case 5:
+					gearPegAngleTarget(holding_angle,(xLock-findTheLeft(Obj1[0],Obj2[0]))*kgearLining,.25);
+					if(LeftObj[2]>targetWidth)
+					{
+						targeting_step = 6;
+					}
+					break;
+			case 6:
+					gearPegAngleTarget(holding_angle,0,0);
+					SmartDashboard::PutString("Feedback: ","Done!!!!");
+					break;
+			case 7:
+					if((Obj1[0]==0)&&(Obj2[0]==0))
+					{
+						SmartDashboard::PutString("Feedback: ","No Target Visible");
+					}
+					else if(checkStep==0)
+					{
+						targeting_step = 8;
+					}
+					else if(checkStep==1)
+					{
+						targeting_step = 1;
+					}
+					else
+					{
+						targeting_step = 9;
+					}
+					break;
+			case 8:
+					if(Obj1[2]>targetWidth-2)
+					{
+						SmartDashboard::PutString("Feedback: ","Too Close to Target");
+					}
+					else
+					{
+						targeting_step = 0;
+					}
+					break;
+			case 9:
+					SmartDashboard::PutString("Feedback: ","UNEXPECTED ERROR!!!");
+					break;
+		}
+	};
+
 
 	void TeleopInit() override {
 
@@ -365,7 +639,27 @@ private:
 
 		//Pixy Code
 			PixyFunct();
-			frc::SmartDashboard::PutNumber("Make Sure Updating", 99888996);
+			//PixyDriveTakeover();
+
+			Obj1[0] = Pixyx1;
+			Obj1[1] = Pixyy1;
+			Obj1[2] = Pixyw1;
+			Obj1[3] = Pixyh1;
+			Obj2[0] = Pixyx2;
+			Obj2[1] = Pixyy2;
+			Obj2[2] = Pixyw2;
+			Obj2[3] = Pixyh2;
+			//Input Pixy Values
+			if(stick.GetRawButton(3))
+			{
+				PutGearOnPeg();
+			}
+			else
+			{
+				checkStep = 0;
+				targeting_step = 7;
+			}
+
 
 
 
