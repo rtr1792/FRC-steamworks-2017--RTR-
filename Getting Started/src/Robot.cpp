@@ -263,11 +263,11 @@ private:
 	float Obj1[4] = {0,0,0,0};
 	float Obj2[4] = {0,0,0,0};
 	float LeftObj[4] = {0,0,0,0};
-	int xMax = 12;
+	int xMax = 319;
 	int xMin = 0;
 	int gearDirection = 0;
 	float holding_angle = 0;
-	int xLock = 6;
+	int xLock = 100;
 	float kgearLining = 0.25;
 	int targetWidth = 6;
 	int checkStep = 0;
@@ -580,7 +580,7 @@ private:
 					break;
 			case 4:
 					gearPegAngleTarget(holding_angle,(xLock-findTheLeft(Obj1[0],Obj2[0]))*kgearLining,0);
-					if((xLock-findTheLeft(Obj1[0],Obj2[0]))<5)
+					if((xLock-findTheLeft(Obj1[0],Obj2[0]))<10)
 					{
 						targeting_step = 5;
 					}
@@ -615,7 +615,7 @@ private:
 					}
 					break;
 			case 8:
-					if(Obj1[2]>targetWidth-2)
+					if(Obj1[2]>targetWidth-5)
 					{
 						SmartDashboard::PutString("Feedback: ","Too Close to Target");
 					}
@@ -659,9 +659,6 @@ private:
 				checkStep = 0;
 				targeting_step = 7;
 			}
-
-
-
 
 				if(stick.GetRawButton(7))
 				{
