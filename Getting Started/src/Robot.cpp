@@ -200,7 +200,7 @@ class Robot:public frc::IterativeRobot
 	float Pixyy1Almost = 95;
 	float Pixyh1Almost = 51;
 	float Pixyw1Almost = 30; //Used
-	float Pixyx2Almost = 302;//Used
+	float Pixyx2Almost = 302; //Used
 	float Pixyy2Almost = 96;
 	float Pixyh2Almost = 48;
 	float Pixyw2Almost = 19;
@@ -292,6 +292,9 @@ class Robot:public frc::IterativeRobot
 	int targetWidth = 40;
 	int xLock = 220;
 
+	bool targetHoldingAngle = false;
+	int targetAngel = 0;
+
 	int autocounter;
 
 	frc::Timer timer;
@@ -339,40 +342,39 @@ class Robot:public frc::IterativeRobot
 				}
 				break;
 			case 2:
-
+				//Right Peg
 				///Boosted timebecause lost sight of target
 				if(timer.Get() < 1.7)
 				{
 					m_robotDrive.MecanumDrive_Cartesian(0, .5, (((ahrs->GetAngle() + 0) / 180) * 4), 0);
 				}
-				else if((timer.Get() > 1.7) && !(ahrs->GetAngle() > -65) && (ahrs->GetAngle() < -55))
+				else if((timer.Get() > 1.7) && !(ahrs->GetAngle() > -65) && !(ahrs->GetAngle() < -55))
 				{
 					m_robotDrive.MecanumDrive_Cartesian(0, 0, (((ahrs->GetAngle() + 60) / 180) * 4), 0);
 					frc::SmartDashboard::PutNumber("AutoAngle", ahrs->GetAngle());
 				}
 				if((ahrs->GetAngle() > -65) && (ahrs->GetAngle() < -55))
 				{
+					PixyFunct();
 					PixyDriveTakeover();
 
 					frc::SmartDashboard::PutNumber("AutoStraf", StrafePct);
 					frc::SmartDashboard::PutNumber("AutoFrd", FrdRevPct);
 
-					if(PixyNoTargets)
+					if(timer.Get() > 4)
 					{
 						if(!setTime)
 						{
 							setTime = true;
 							autoTime = timer.Get();
 						}
-						if((timer.Get() - autoTime) < 0.1)
+						if((timer.Get() - autoTime) < 2)
 						{
-							m_robotDrive.MecanumDrive_Cartesian(0, .5, (((ahrs->GetAngle() + 60) / 180) * kgyroManip), 0);
+							m_robotDrive.MecanumDrive_Cartesian(0, .25, (((ahrs->GetAngle() + 60) / 180) * kgyroManip), 0);
 						}
 						else
 						{
-							m_robotDrive.MecanumDrive_Cartesian(0, 0, 0, 0);
-							gearServoLeft.SetAngle(90);
-							gearServoRight.SetAngle(0);
+							autonum = 0;
 
 						}
 					}
@@ -380,38 +382,44 @@ class Robot:public frc::IterativeRobot
 
 				break;
 			case 3:
-				frc::SmartDashboard::PutNumber("Trouble Auto", timer.Get());
+				//Left Peg
+				///Boosted timebecause lost sight of target
 				if(timer.Get() < 1.7)
 				{
 					m_robotDrive.MecanumDrive_Cartesian(0, .5, (((ahrs->GetAngle() + 0) / 180) * 4), 0);
 				}
-				else if((timer.Get() > 1.7) && !(ahrs->GetAngle() > 55) && (ahrs->GetAngle() < 65))
+				else if((timer.Get() > 1.7) && !(ahrs->GetAngle() < 65) && !(ahrs->GetAngle() > 55))
 				{
 					m_robotDrive.MecanumDrive_Cartesian(0, 0, (((ahrs->GetAngle() - 60) / 180) * 4), 0);
+					frc::SmartDashboard::PutNumber("AutoAngle", ahrs->GetAngle());
 				}
-				else if((ahrs->GetAngle() > 55) && (ahrs->GetAngle() < 65))
+				if((ahrs->GetAngle() < 65) && (ahrs->GetAngle() > 55))
 				{
+					PixyFunct();
 					PixyDriveTakeover();
-					if(PixyNoTargets)
+
+					frc::SmartDashboard::PutNumber("AutoStraf", StrafePct);
+					frc::SmartDashboard::PutNumber("AutoFrd", FrdRevPct);
+
+					if(timer.Get() > 4)
 					{
 						if(!setTime)
 						{
 							setTime = true;
 							autoTime = timer.Get();
 						}
-						if((timer.Get() - autoTime) < 0.1)
+						if((timer.Get() - autoTime) < 2)
 						{
-							m_robotDrive.MecanumDrive_Cartesian(0, .5, (((ahrs->GetAngle() - 60) / 180) * kgyroManip), 0);
+							m_robotDrive.MecanumDrive_Cartesian(0, .25, (((ahrs->GetAngle() - 60) / 180) * kgyroManip), 0);
 						}
 						else
 						{
-							m_robotDrive.MecanumDrive_Cartesian(0, 0, 0, 0);
-							gearServoLeft.SetAngle(90);
-							gearServoRight.SetAngle(0);
+							autonum = 0;
 
 						}
 					}
 				}
+
 				break;
 			case 4:
 
@@ -599,7 +607,7 @@ class Robot:public frc::IterativeRobot
 	void PixyDriveTakeover()
 	{
 		Xmid = ((Pixyx1 + Pixyx2) / 2);
-		XAlmostmid = ((Pixyx1Almost + Pixyx2Almost) / 2)-15;
+		XAlmostmid = ((Pixyx1Almost + Pixyx2Almost) / 2) - 15;
 		StrafePct = (XAlmostmid - Xmid) / 100;
 		//StrafePct = StrafePct/fabs(StrafePct);
 		//StrafePct = StrafePct *.5;
@@ -616,29 +624,62 @@ class Robot:public frc::IterativeRobot
 
 		frc::SmartDashboard::PutNumber("Fused Heading", ahrs->GetFusedHeading());
 
-		float currentAngle = 0;
-		int heldAng = ahrs->GetAngle();
+		if(targetHoldingAngle == false)
+		{
 
-		heldAng = heldAng % 360;
+			if((sin(ahrs->GetFusedHeading() * (3.141 / 180)) > sin(-30 * (3.141 / 180))) && (sin(ahrs->GetFusedHeading() * (3.141 / 180)) < sin(30 * (3.141 / 180))))
+			{
+				targetAngel = 1;
+			}
+			else if(ahrs->GetFusedHeading() > 270 && ahrs->GetFusedHeading() < 330)
+			{
+				targetAngel = 2;
+			}
+			else if(ahrs->GetFusedHeading() > 30 && ahrs->GetFusedHeading() < 90)
+			{
+				targetAngel = 3;
+			}
+			else
+			{
+				targetAngel = 0;
+			}
 
-		if((heldAng > 30) && (heldAng < 90))
-		{
-			currentAngle = 60;
+			targetHoldingAngle = true;
 		}
-		else if((heldAng > -30) && (heldAng < 30))
+
+		float testAng = 0;
+
+		if(targetAngel == 1)
 		{
-			currentAngle = 0;
+			frc::SmartDashboard::PutString("Feedback: ", "Targeting Mid");
+			testAng = (sin(0 * (3.141 / 180)) - sin(ahrs->GetFusedHeading() * (3.141 / 180))) * 2.1;
+			frc::SmartDashboard::PutNumber("testAng", testAng);
 		}
-		else if((heldAng > -90) && (heldAng < -30))
+		else if(targetAngel == 2)
 		{
-			currentAngle = -60;
+			frc::SmartDashboard::PutString("Feedback: ", "Targeting -60");
+			testAng = ((300 - ahrs->GetFusedHeading()) / 180) * 4;
+			frc::SmartDashboard::PutNumber("testAng", testAng);
+		}
+		else if(targetAngel == 3)
+		{
+			frc::SmartDashboard::PutString("Feedback: ", "Targeting 60");
+			testAng = ((60 - ahrs->GetFusedHeading()) / 180) * 4;
+			frc::SmartDashboard::PutNumber("testAng", testAng);
+		}
+		else
+		{
+			frc::SmartDashboard::PutString("Feedback: ", "Targeting NULL");
+			testAng = 0;
 		}
 
 		frc::SmartDashboard::PutNumber("StrafePct", StrafePct);
 		frc::SmartDashboard::PutNumber("FrdRevPct", FrdRevPct);
 
-		m_robotDrive.MecanumDrive_Cartesian(StrafePct, FrdRevPct, (((ahrs->GetAngle() - currentAngle) / 180) * 4), 0);
-	};
+		//m_robotDrive.MecanumDrive_Cartesian(StrafePct, FrdRevPct, (((heldAng - currentAngle) / 180) * 4), 0);
+		m_robotDrive.MecanumDrive_Cartesian(StrafePct, FrdRevPct, -testAng, 0);
+	}
+	;
 
 	void gearPegAngleTarget(float currentPeg,float xspeed,float yspeed)
 	{
@@ -866,6 +907,7 @@ class Robot:public frc::IterativeRobot
 		}
 		else
 		{
+			targetHoldingAngle = false;
 			checkStep = 0;
 			targeting_step = 7;
 		}
@@ -955,7 +997,6 @@ class Robot:public frc::IterativeRobot
 			}
 		}
 
-
 		bool reset_yaw_button_pressed = stick.GetRawButton(6);
 		if(reset_yaw_button_pressed)
 		{
@@ -980,6 +1021,8 @@ class Robot:public frc::IterativeRobot
 		Wait(0.005); // wait 5ms to avoid hogging CPU cycles
 
 		frc::SmartDashboard::PutNumber("Gyro", ahrs->GetAngle());
+		frc::SmartDashboard::PutNumber("Fused Heading", ahrs->GetFusedHeading());
+		frc::SmartDashboard::PutNumber("Virtual Fused Gyro", (ahrs->GetFusedHeading() - 360));
 
 		//AHRS has a check PWM not push PWM so they can only be used for sensors
 
@@ -1094,7 +1137,6 @@ class Robot:public frc::IterativeRobot
 		frc::SmartDashboard::PutNumber("Right Front", rf.Get());
 		frc::SmartDashboard::PutNumber("Left Rear", lr.Get());
 		frc::SmartDashboard::PutNumber("Left Front", lf.Get());
-
 
 	}
 
